@@ -31,6 +31,7 @@
 open CHLanguage
 
 (* chutil *)
+open CHLogger
 open CHPrettyUtil
 
 (* xprlib *)
@@ -41,6 +42,7 @@ open XprToPretty
 open CCHBasicTypes
 open CCHLibTypes
 open CCHTypesToPretty
+open CCHExternalPredicate
 
 (* cchpre *)
 open CCHMemoryBase
@@ -65,11 +67,11 @@ object (self)
 
   method private offset_to_string offset =
     match offset with
-    | NoOffset -> ""
+    | NoOffset -> "{no offset}"
     | Field ((fname,_),foff) ->
-       "offset: ." ^ fname ^ self#offset_to_string foff
+       "field offset: ." ^ fname ^ self#offset_to_string foff
     | Index (e,ioff) ->
-       "offset: [" ^ (e2s e) ^ "]" ^ self#offset_to_string ioff
+       "index offset: [" ^ (e2s e) ^ "]" ^ self#offset_to_string ioff
 
   method private memaddr_to_string memref offset =
     (self#memref_to_string memref) ^ (self#offset_to_string offset)
@@ -101,12 +103,14 @@ object (self)
     let (pcs, epcs) = poq#get_postconditions v in
     match (pcs, epcs) with
     | ([], _) ->
+       let _ = ch_info_log#add "ricardo" (STR "-> function_return_value_safe: empty post conditions") in
        let pc = XNotNull ReturnValue in
        begin
          poq#mk_postcondition_request pc callee;
          None
        end
     | (_, []) ->
+       let _ = ch_info_log#add "ricardo" (STR "-> function_return_value_safe: empty epcs") in
        List.fold_left (fun acc (pc, _) ->
            match acc with
            | Some _ -> acc
@@ -128,8 +132,10 @@ object (self)
                    None
                  end) None pcs
     | _ ->
+       let _ = ch_info_log#add "ricardo" (STR "-> function_return_value_safe: default case") in
        begin
          List.iter (fun (pc, _) ->
+             let _ = ch_info_log#add "ricardo" (STR ("->> function_return_value_safe: predicate: " ^ p2s (xpredicate_to_pretty pc))) in
              match pc with
              | XNull ReturnValue ->
                 poq#set_diagnostic
@@ -142,24 +148,33 @@ object (self)
 
   method private memory_address_safe (invindex: int) (v: variable_t) =
     let (memref, offset) = poq#env#get_memory_address v in
+    (* let _ = ch_info_log#add "ricardo" (STR ("memref: " ^ (p2s memref#toPretty) ^ " offset: " ^ self#offset_to_string offset)) in *)
+    let _ = ch_info_log#add "ricardo" (STR ("memory_address_safe: " ^ (self#memaddr_to_string memref offset))) in
     let _ =
       poq#set_diagnostic_arg
         1 ("memory address: " ^ (self#memaddr_to_string memref offset)) in
     let deps = DLocal [invindex] in
     match memref#get_base with
     | CStackAddress stackvar when poq#env#is_local_variable stackvar ->
+       let _ = ch_info_log#add "ricardo" (STR ">>> stack address") in
        let (vinfo, _) = poq#env#get_local_variable stackvar in
        let msg = "address of stack variable: "  ^ vinfo.vname in
        Some (deps, msg)
     | CGlobalAddress gvar ->
+       let _ = ch_info_log#add "ricardo" (STR ">>> global address") in
        let (vinfo, _) = poq#env#get_global_variable gvar in
        let msg = "address of global variable: " ^ vinfo.vname in
        Some (deps, msg)
     | CStringLiteral _ ->
+       let _ = ch_info_log#add "ricardo" (STR ">>> string literal") in
        let msg = "address of string literal" in
        Some (deps, msg)
-    | CBaseVar v -> self#xpr_implies_safe invindex (XVar v)
-    | _ -> None
+    | CBaseVar v ->
+       let _ = ch_info_log#add "ricardo" (STR ">>> base var") in
+       self#xpr_implies_safe invindex (XVar v)
+    | _ ->
+       let _ = ch_info_log#add "ricardo" (STR ">>> huh?") in
+       None
 
   method private memory_variable_safe (_invindex: int) (v: variable_t) =
     let (memref,offset) = poq#env#get_memory_variable v in
@@ -169,6 +184,7 @@ object (self)
     None
 
   method private xpr_implies_safe (invindex: int) (x: xpr_t) =
+    let _ = ch_info_log#add "ricardo" (STR ("xpr_implies_safe " ^ p2s (x2p x))) in
     match x with
     | XOp (XPlus, _) | XOp (XMinus, _) ->
        let deps = DLocal [invindex] in
@@ -177,12 +193,17 @@ object (self)
     | x when poq#is_global_expression x ->
        self#global_expression_safe invindex x
     | XVar v when poq#env#is_function_return_value v ->
+       let _ = ch_info_log#add "ricardo" (STR ("xpr_implies_safe for return value " ^ p2s v#toPretty)) in
        self#function_return_value_safe invindex v
     | XVar v when poq#env#is_memory_address v ->
+       let _ = ch_info_log#add "ricardo" (STR ("xpr_implies_safe for memory address " ^ p2s v#toPretty)) in
        self#memory_address_safe invindex v
     | XVar v when poq#env#is_memory_variable v ->
+       let _ = ch_info_log#add "ricardo" (STR ("xpr_implies_safe for memory variable " ^ p2s v#toPretty)) in
        self#memory_variable_safe invindex v
-    | _ -> None
+    | _ ->
+       let _ = ch_info_log#add "ricardo" (STR "xpr_implies_safe for unknown case") in
+       None
 
   method private xprlist_implies_safe (invindex: int) (l: xpr_t list) =
     match l with
@@ -245,28 +266,39 @@ object (self)
           None
 
   method private inv_implies_safe (inv: invariant_int) =
+    let _ = ch_info_log#add "ricardo" (STR (">> checking invariant " ^ (p2s inv#toPretty))) in
+    (*  ^ " lower bound " ^ inv#lower_bound#toString *)
     let r = None in
     let r =
       match r with
       | Some _ -> r
       | _ ->
          match inv#lower_bound_xpr with
-         | Some x -> self#xpr_implies_safe inv#index x
+         | Some x ->
+             let _ = ch_info_log#add "ricardo" (STR ("it has a lower bound")) in
+             self#xpr_implies_safe inv#index x
          | _ -> None in
     let r =
       match r with
-      | Some _ -> r
+      | Some _ ->
+          let _ = ch_info_log#add "ricardo" (STR "xpr_implies_safe returned some") in
+          r
       | _ ->
+         let _ = ch_info_log#add "ricardo" (STR "xpr_implies_safe returned None, calling get_fact") in
          match inv#get_fact with
          | NonRelationalFact (_,FBaseOffsetValue(_, _, _, _, false)) ->
+            let _ = ch_info_log#add "ricardo" (STR "it's non-relational fact with baseoffsetvalue") in
             let deps = DLocal [inv#index] in
             let msg =
               "null has been explicitly excluded "
                 ^ "(either by assignment or by checking)" in
             Some (deps, msg)
          | NonRelationalFact (_, FRegionSet symlist) ->
+            let _ = ch_info_log#add "ricardo" (STR "it's non-relational fact with regionset") in
             self#regions_implies_safe inv#index symlist
-         | _ -> None  in
+         | _ ->
+            let _ = ch_info_log#add "ricardo" (STR "fact is none of those") in
+            None in
     let r =
       match r with
       | Some _ -> r
@@ -408,6 +440,7 @@ object (self)
           match self#inv_implies_delegation inv with
           | Some (deps,msg) ->
              begin
+               let _ = ch_info_log#add "ricardo" (STR "delegating not null to the API") in
                poq#record_safe_result deps msg;
                true
              end
@@ -417,7 +450,15 @@ end
 
 
 let check_not_null (poq: po_query_int) (e: exp) =
+  let _ = ch_info_log#add "ricardo" (STR ("> not null exp: " ^ p2s (exp_to_pretty e))) in
   let invs = poq#get_invariants 1 in
+  let _ = ch_info_log#add "ricardo" (STR (">> invariants: " ^ p2s (poq#invariant_values_to_pretty invs))) in
   let _ = poq#set_diagnostic_invariants 1 in
   let checker = new not_null_checker_t poq e invs in
-  checker#check_safe || checker#check_violation || checker#check_delegation
+  let safe = checker#check_safe in
+  let violation = checker#check_violation in
+  let deleg = checker#check_delegation in
+  let msg = Printf.sprintf "> not null: safe %B violation %B deleg %B " safe violation deleg in
+  let _ = ch_info_log#add "ricardo" (STR msg) in
+  safe || violation || deleg
+  (* checker#check_safe || checker#check_violation || checker#check_delegation *)

@@ -1019,6 +1019,7 @@ object (self)
            (arg:int)
            (typ:typ)
            (e:exp):(string * xpr_t * xpr_t * dependencies_t) option =
+    let _ = ch_info_log#add "ricardo" (STR ("getting buffer offset size for type " ^ p2s (typ_to_pretty typ) ^ " and exp " ^ p2s (exp_to_pretty e))) in
     let invs = self#get_invariants arg in
     match self#get_exp_buffer_index_size e with
     | Some (name,indexsize,indexoffset) ->

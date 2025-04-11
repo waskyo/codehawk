@@ -36,6 +36,7 @@ open CHPretty
 
 (* chutil *)
 open CHLogger
+open CHPrettyUtil
 
 (* xprlib *)
 open Xprt
@@ -60,6 +61,7 @@ open CCHPreTypes
 open CCHAnalysisTypes
 
 let x2p = xpr_formatter#pr_expr
+let p2s = pretty_to_string
 
 
 let get_formal_parameter (env:c_environment_int) (i:int) =
@@ -155,6 +157,7 @@ let _implies_upper_bound (a:po_predicate_t) (e:exp) (ub:int) =
   | _ -> false
 
 let implies (env:c_environment_int) (a:po_predicate_t) (p:po_predicate_t) =
+  let _ = ch_info_log#add "ricardo" (STR ("implies: " ^ p2s (po_predicate_to_pretty p))) in
   match p with
   | PAllocationBase (Lval (Var (_vname, vid), NoOffset)) ->
      begin

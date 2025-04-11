@@ -32,6 +32,7 @@ open CHLanguage
 open CHNumerical
 
 (* chutil *)
+open CHLogger
 open CHPrettyUtil
 
 (* xprlib *)
@@ -205,6 +206,7 @@ object (self)
     | _ ->
        match poq#get_buffer_offset_size 2 typ e with
        | Some (vname,xsize,xoffset, deps) ->
+          let _ = ch_info_log#add "ricardo" (STR ("vname: " ^ vname)) in
           let xconstraint = XOp (XLt, [xoffset; xsize]) in
           let sconstraint = simplify_xpr xconstraint in
           if is_true sconstraint then
@@ -270,7 +272,15 @@ end
 
 
 let check_upper_bound (poq: po_query_int) (typ: typ) (e: exp) =
+  let _ = ch_info_log#add "ricardo" (STR ("> upper bound: type: " ^ p2s (typ_to_pretty typ))) in
+  let _ = ch_info_log#add "ricardo" (STR ("> upper bound: exp: " ^ p2s (exp_to_pretty e))) in
   let invs = poq#get_invariants 2 in
   let _ = poq#set_diagnostic_invariants 2 in
   let checker = new upper_bound_checker_t poq typ e invs in
-  checker#check_safe || checker#check_violation || checker#check_delegation
+  let safe = checker#check_safe in
+  let violation = checker#check_violation in
+  let deleg = checker#check_delegation in
+  let msg = Printf.sprintf "> upper bound: safe %B violation %B deleg %B " safe violation deleg in
+  let _ = ch_info_log#add "ricardo" (STR msg) in
+  safe || violation || deleg
+  (* checker#check_safe || checker#check_violation || checker#check_delegation *)

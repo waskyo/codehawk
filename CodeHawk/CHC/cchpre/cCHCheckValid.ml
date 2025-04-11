@@ -50,6 +50,7 @@ open CCHUtilities
 open CCHPreFileIO
 open CCHPreTypes
 open CCHProofScaffolding
+open CCHPOPredicate
 
 let pd = CCHPredicateDictionary.predicate_dictionary
 let fenv = CCHFileEnvironment.file_environment
@@ -568,6 +569,7 @@ let rec is_global_address (e:exp) =
 
 let check_ppo_validity
       (fname:string) (env:cfundeclarations_int) (ppo:proof_obligation_int) =
+  let _ = ch_info_log#add "ricardo" (STR ("-- checking ppo validity for " ^ p2s (po_predicate_to_pretty ppo#get_predicate))) in
 
   let get_varinfo = env#get_varinfo_by_vid in
 
@@ -595,12 +597,14 @@ let check_ppo_validity
     begin
       ppo#set_status status;
       ppo#set_dependencies mth;
-      ppo#set_explanation explanation
+      ppo#set_explanation explanation;
+      ch_info_log#add "ricardo" (STR ("== making record: " ^ explanation))
     end in
 
   let make = make_record Green DStmt in
   let make_violation = make_record Red DStmt in
   let make_warning _s = make_record Green DStmt in   (* TBD *)
+  let _ = ch_info_log#add "ricardo" (STR "over here") in
   let _ = pd#index_po_predicate ppo#get_predicate in
   try
     match ppo#get_predicate with
@@ -2296,7 +2300,9 @@ let check_ppo_validity
        | _ -> ()
      end
 
-  | _ -> ()
+  | _ -> 
+    let _ = ch_info_log#add "ricardo" (STR "default case") in
+    ()
   with CCHFailure pp ->
     begin
       pr_debug [
@@ -2310,6 +2316,9 @@ let check_ppo_validity
 
 
 let process_function fname =
+  let bt = Printexc.raw_backtrace_to_string (Printexc.get_callstack 8) in
+  let msg = Printf.sprintf "Processing function %s\n%s" fname bt in
+  let _ = ch_info_log#add "ricardo" (STR msg) in
   let fundec = read_function_semantics fname in
   List.iter
     (fun p -> check_ppo_validity fname fundec.sdecls p)

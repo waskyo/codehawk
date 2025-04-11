@@ -32,6 +32,7 @@ open CHPretty
 
 (* chutil *)
 open CHLogger
+open CHPrettyUtil
 
 (* cchlib *)
 open CCHBasicTypes
@@ -86,6 +87,8 @@ open CCHPOCheckValueConstraint
 open CCHPOCheckValuePreserved
 open CCHPOQuery
 
+
+let p2s = pretty_to_string
 
 module H = Hashtbl
 
@@ -209,6 +212,9 @@ let check_proof_obligations
       (fApi:function_api_int)
       (invIO:invariant_io_int)
       (proofObligations:proof_obligation_int list) =
+  let bt = Printexc.raw_backtrace_to_string (Printexc.get_callstack 8) in
+  let msg = Printf.sprintf "checking %d proof obligations\n%s" (List.length proofObligations) bt in
+  let _ = ch_info_log#add "ricardo" (STR msg) in
   List.iter (fun p ->
       let msg s =
         LBLOCK [
@@ -225,8 +231,10 @@ let check_proof_obligations
           begin
             check_ppo_validity env#get_functionname env#get_fdecls p;
             if p#is_closed then
+              let _ = ch_info_log#add "ricardo" (STR "is closed") in
               ()
             else if (new po_checker_t env fApi invIO p)#get_result then
+              let _ = ch_info_log#add "ricardo" (STR "get result") in
               ()
           end
         with
@@ -237,6 +245,7 @@ let check_proof_obligations
               (invIO#get_location_invariant
                  p#get_context#project_on_cfg)#get_invariants with
       | Some domain ->
+         let _ = ch_info_log#add "ricardo" (STR ("+ domain checking obligation: " ^ p2s (po_predicate_to_pretty p#get_predicate))) in
          if system_settings#use_unreachability then
            ignore ((make_unreachable p domain))
          else
@@ -251,4 +260,5 @@ let check_proof_obligations
              default ()
            end
       | _ ->
+         let _ = ch_info_log#add "ricardo" (STR ("+ default checking obligation: " ^ p2s (po_predicate_to_pretty p#get_predicate))) in
          default ()) proofObligations

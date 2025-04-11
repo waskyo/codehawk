@@ -32,6 +32,7 @@ open CHLanguage
 open CHNumerical
 
 (* chutil *)
+open CHLogger
 open CHPrettyUtil
 
 (* xprlib *)
@@ -408,14 +409,19 @@ object (self)
 
   method private xpr1_implies_pluspi_safe (invindex: int) (x: xpr_t) =
     match x with
-    | XVar v -> self#var1_implies_pluspi_safe invindex v
-    | _ -> None
+    | XVar v -> 
+        let _ = ch_info_log#add "ricardo" (STR ">>>> xpr1 implies pluspi safe for xvar") in
+        self#var1_implies_pluspi_safe invindex v
+    | _ -> 
+        let _ = ch_info_log#add "ricardo" (STR ">>>> xpr1 implies pluspi safe not an xvar, returning None") in
+        None
 
   method private check_pluspi_safe_invs1 =
     List.fold_left (fun acc inv1 ->
         acc ||
           match inv1#upper_bound_xpr with
           | Some x ->
+             let _ = ch_info_log#add "ricardo" (STR (">>> checking upper bound expression " ^ x2s x)) in
              begin
                match self#xpr1_implies_pluspi_safe inv1#index x with
                | Some (deps,msg) ->
@@ -425,7 +431,9 @@ object (self)
                   end
                | _ -> false
              end
-          | _ -> false) false invs1
+          | _ -> 
+             let _ = ch_info_log#add "ricardo" (STR ">>> no upper bound expression") in
+             false) false invs1
 
   method private xpr_implies_pluspi_safe
                    (_inv1index: int) (_inv2index: int) (_x1: xpr_t) (_x2: xpr_t) =
@@ -477,6 +485,8 @@ object (self)
          true
        end
     | _ ->
+       let msg = Printf.sprintf ">> checking safe, unsigned length safe %B" self#unsigned_length_safe in
+       let _ = ch_info_log#add "ricardo" (STR msg) in
        (self#unsigned_length_safe)
        && (match op with
            | PlusPI | IndexPI ->
@@ -487,6 +497,7 @@ object (self)
                      match self#invs2_implies_pluspi_safe
                              vname xsize xoffset deps1 with
                      | Some (deps, msg) ->
+                        let _ = ch_info_log#add "ricardo" (STR ">> looking at deps") in
                         begin
                           poq#record_safe_result deps msg;
                           true
@@ -494,7 +505,10 @@ object (self)
                      | _ -> false
                    end
                 | _ ->
-                   self#check_pluspi_safe_invs1 || self#check_pluspi_safe_invs
+                   let safe_invs1 = self#check_pluspi_safe_invs1 in
+                   let safe_invs = self#check_pluspi_safe_invs in
+                   let _ = ch_info_log#add "ricardo" (STR (Printf.sprintf ">> safe invs1 %B safe invs %B" safe_invs1 safe_invs)) in
+                   safe_invs1 || safe_invs
               end
            | _ -> false)
 
@@ -918,10 +932,19 @@ let check_ptr_upper_bound
       (op:binop)
       (e1:exp)
       (e2:exp) =
+  let _ = ch_info_log#add "ricardo" (STR ("> ptr upper bound: exp1: " ^ p2s (exp_to_pretty e1))) in
+  let _ = ch_info_log#add "ricardo" (STR ("> ptr upper bound: exp2: " ^ p2s (exp_to_pretty e2))) in
+  let _ = ch_info_log#add "ricardo" (STR ("> ptr upper bound: typ: " ^ p2s (typ_to_pretty typ))) in
   let invs1 = poq#get_invariants 3 in
   let invs2 = poq#get_invariants 4 in
   let _ = poq#set_diagnostic_invariants 3 in
   let _ = poq#set_diagnostic_invariants 4 in
   let checker =
     new ptr_upper_bound_checker_t ~strict poq typ op e1 e2 invs1 invs2 in
-  checker#check_safe || checker#check_violation || checker#check_delegation
+  let safe = checker#check_safe in
+  let violation = checker#check_violation in
+  let deleg = checker#check_delegation in
+  let msg = Printf.sprintf "> ptr upper bound: safe %B violation %B deleg %B " safe violation deleg in
+  let _ = ch_info_log#add "ricardo" (STR msg) in
+  safe || violation || deleg
+  (* checker#check_safe || checker#check_violation || checker#check_delegation *)

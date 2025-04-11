@@ -31,6 +31,7 @@
 open CHNumerical
 
 (* chutil *)
+open CHLogger
 open CHPrettyUtil
 
 (* xprlib *)
@@ -243,7 +244,14 @@ end
 
 
 let check_not_zero (poq: po_query_int) (e: exp) =
+  let _ = ch_info_log#add "ricardo" (STR ("> not zero: exp: " ^ p2s (exp_to_pretty e))) in
   let invs = poq#get_invariants 1 in
   let _ = poq#set_diagnostic_invariants 1 in
   let checker = new not_zero_checker_t poq e invs in
-  checker#check_safe || checker#check_violation || checker#check_delegation
+  let safe = checker#check_safe in
+  let violation = checker#check_violation in
+  let deleg = checker#check_delegation in
+  let msg = Printf.sprintf "> not zero: safe %B violation %B deleg %B " safe violation deleg in
+  let _ = ch_info_log#add "ricardo" (STR msg) in
+  safe || violation || deleg
+  (* checker#check_safe || checker#check_violation || checker#check_delegation *)

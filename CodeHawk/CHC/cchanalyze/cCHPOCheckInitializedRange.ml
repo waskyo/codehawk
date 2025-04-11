@@ -32,6 +32,7 @@ open CHNumerical
 open CHPretty
 
 (* chutil *)
+open CHLogger
 open CHPrettyUtil
 
 (* xprlib *)
@@ -100,10 +101,11 @@ object (self)
 
   method private unsigned_length_conflict =
     match e2 with
-    | CastE (t, _) when is_unsigned_integral_type t ->
+    | CastE (t, the_e) when is_unsigned_integral_type t ->
        let _ =
          poq#set_diagnostic_arg
            4 ("value is cast to unsigned: " ^  (p2s (typ_to_pretty t))) in
+       let _ = ch_info_log#add "ricardo" (STR ("value cast: " ^ p2s (exp_to_pretty the_e))) in
        List.fold_left (fun acc inv2 ->
            match acc with
            | Some _ -> acc
@@ -158,10 +160,16 @@ object (self)
         | _ -> (deps, acc)) (DLocal [],[]) vinfovalues
 
   method private check_elementinits l (len: numerical_t) =
-    if len#gt (mkNumerical 50) then
+    let msg = Printf.sprintf "checking elementinits with length : %s" len#toString in
+    let _ = ch_info_log#add "ricardo" (STR msg) in
+    if len#gt (mkNumerical 2000) then
+      let _ = ch_info_log#add "ricardo" (STR "too big") in
       None
     else
+      let _ = ch_info_log#add "ricardo" (STR "not too big") in
       if List.length l < len#toInt then
+        let msg = Printf.sprintf "list length is: %d" (List.length l) in
+        let _ = ch_info_log#add "ricardo" (STR msg) in
         None
       else
         let lst = List.sort (fun (n1, _x) (n2, _x) -> n1#compare n2) l in
@@ -258,6 +266,8 @@ object (self)
                      end
 
                 | Some (_, irname, irlen) ->
+                   let msg = Printf.sprintf "ir %s with len %s, arraylen %s, -1 %s" irname irlen#toString arraylen#toString (arraylen#sub numerical_one)#toString in
+                   let _ = ch_info_log#add "ricardo" (STR msg) in
                    let argmsg =
                      Printf.sprintf
                        ("stack array with length %s; initialization by %s "
@@ -366,6 +376,8 @@ end
 
 
 let check_initialized_range (poq: po_query_int) (e1: exp) (e2: exp) =
+  let _ = ch_info_log#add "ricardo" (STR ("> initialized range: exp1: " ^ p2s (exp_to_pretty e1))) in
+  let _ = ch_info_log#add "ricardo" (STR ("> initialized range: exp2: " ^ p2s (exp_to_pretty e2))) in
   let invs1 = poq#get_invariants 1 in
   let invs2 = poq#get_invariants 2 in
   let _ = poq#set_diagnostic_invariants 1 in
@@ -374,4 +386,10 @@ let check_initialized_range (poq: po_query_int) (e1: exp) (e2: exp) =
     poq#set_key_diagnostic
       "DomainRef:initialized-range" "ability to track ranges of memory" in
   let checker = new initialized_range_checker_t poq e1 e2 invs1 invs2 in
-  checker#check_safe || checker#check_violation || checker#check_delegation
+  let safe = checker#check_safe in
+  let violation = checker#check_violation in
+  let deleg = checker#check_delegation in
+  let msg = Printf.sprintf "> initialized range: safe %B violation %B deleg %B " safe violation deleg in
+  let _ = ch_info_log#add "ricardo" (STR msg) in
+  safe || violation || deleg
+  (* checker#check_safe || checker#check_violation || checker#check_delegation *)
