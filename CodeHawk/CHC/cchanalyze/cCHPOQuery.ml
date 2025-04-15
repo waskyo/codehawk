@@ -772,9 +772,13 @@ object (self)
 
   method get_vinfo_offset_values (vinfo:varinfo):(invariant_int * offset) list =
     let facts = (invio#get_location_invariant cfgcontext)#get_invariants in
+    let msg = Printf.sprintf "facts length %d" (List.length facts) in
+    let _ = ch_info_log#add "ricardo" (STR msg) in
     List.fold_left (fun acc f ->
         match f#get_fact with
         | NonRelationalFact (v, _i) ->
+           let vmgr = env#get_variable_manager in
+           let _ = ch_info_log#add "ricardo" (STR ("NonRelationalFact " ^ p2s (vmgr#variable_to_pretty v))) in
            begin
              match env#get_vinfo_offset v vinfo with
              | Some offset -> (f, offset) :: acc

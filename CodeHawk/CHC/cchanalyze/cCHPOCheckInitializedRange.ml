@@ -124,13 +124,20 @@ object (self)
     | _ -> None
 
   method private get_initialization_length (vinfo: varinfo) =
+    let _ = ch_info_log#add "ricardo" (STR ("name " ^ vinfo.vname ^ " type: " ^ p2s (typ_to_pretty vinfo.vtype))) in
     let vinfovalues = poq#get_vinfo_offset_values vinfo in
+    let msg = Printf.sprintf "vinfovalues length %d" (List.length vinfovalues) in
+    let _ = ch_info_log#add "ricardo" (STR msg) in
     List.fold_left (fun acc (inv,offset) ->
+      begin
+        let _ = ch_info_log#add "ricardo" (STR "hola") in
         match acc with
-        | Some _ -> acc
+        | Some _ ->
+          acc
         | _ ->
            match offset with
-           | Field _ | Index _ -> None
+           | Field _ | Index _ ->
+             None
            | NoOffset ->
               match inv#get_fact with
               | NonRelationalFact(_,FInitializedSet [sym])
@@ -142,7 +149,8 @@ object (self)
                       Some (deps, irname,irlen)
                    | _ -> None
                  end
-              | _ -> None) None vinfovalues
+              | _ -> None
+        end) None vinfovalues
 
   method private get_element_initializations (vinfo: varinfo) =
     let vinfovalues = poq#get_vinfo_offset_values vinfo in
@@ -227,6 +235,7 @@ object (self)
               begin
                 match self#get_initialization_length vinfo with
                 | Some (deps, irname, irlen) when irlen#geq arraylen ->
+                   let _ = ch_info_log#add "ricardo" (STR "case 1") in
                    let deps = join_dependencies deps1 deps in
                    let msg =
                      Printf.sprintf
@@ -234,6 +243,7 @@ object (self)
                    Some (deps, msg)
                 | Some (deps, irname, irlen)
                      when irlen#geq (arraylen#sub numerical_one) ->
+                   let _ = ch_info_log#add "ricardo" (STR "case 2") in
                    let (edeps, elementinits) =
                      self#get_element_initializations vinfo in
                    if List.exists (fun (n, _x) ->
@@ -280,6 +290,7 @@ object (self)
                      None
                    end
                 | _ ->
+                   let _ = ch_info_log#add "ricardo" (STR "case 4") in
                    let (deps,elementinits) =
                      self#get_element_initializations vinfo in
                    match self#check_elementinits elementinits arraylen with
@@ -292,6 +303,8 @@ object (self)
                           s in
                       Some (deps, msg)
                    | _ ->
+                      let msg = Printf.sprintf "element inits %d" (List.length elementinits) in
+                      let _ = ch_info_log#add "ricardo" (STR msg) in
                       let p =
                         String.concat
                           ", "
