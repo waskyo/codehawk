@@ -33,6 +33,9 @@ open CHLanguage
 open CHNumerical
 open CHPretty
 
+(* chutil *)
+open CHLogger
+
 (* xprlib *)
 open Xprt
 open XprTypes
@@ -59,6 +62,7 @@ open CCHCommand
 module B = Big_int_Z
 
 let pr2s = CHPrettyUtil.pretty_to_string
+let e2s e = pr2s (exp_to_pretty e)
 let fenv = CCHFileEnvironment.file_environment
 
 
@@ -532,6 +536,7 @@ object (self)
     | _ -> random_constant_expr             (* TBD, see ref *)
 
   method private translate_rhs_expr (x:exp):xpr_t =
+    let _ = ch_info_log#add "ricardo" (STR ("translate rhs expr for " ^ e2s x)) in
     let null_sym = memregmgr#mk_null_sym (-1) in
     let null_constant_expr = XConst (SymSet [null_sym]) in
     let default () =
