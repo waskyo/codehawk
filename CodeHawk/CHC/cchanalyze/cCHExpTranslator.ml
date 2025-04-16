@@ -65,6 +65,25 @@ let pr2s = CHPrettyUtil.pretty_to_string
 let e2s e = pr2s (exp_to_pretty e)
 let fenv = CCHFileEnvironment.file_environment
 
+let rec exp_to_str_ricardo (x: exp) =
+        (match x with
+                | Const _ -> "Const"
+                | Lval _ -> "Lval"
+                | SizeOf _ -> "SizeOf"
+                | SizeOfE s -> "SizeOfE(" ^ (exp_to_str_ricardo s) ^ ")"
+                | SizeOfStr s -> "SizeofStr(" ^ s ^ ")"
+                | AlignOf _ -> "AlignOf()"
+                | AlignOfE _ -> "AlignOfE()"
+                | UnOp (_, two, _) -> "UnOp(type, " ^ (exp_to_str_ricardo two) ^ ", type)"
+                | BinOp (a, b, c, d) -> "BinOp(" ^ a ^ ", " ^ (exp_to_str_ricardo b) ^ ", " ^ (exp_to_str_ricardo c) ^ ", " ^ (exp_to_str_ricardo d) ^ ")" 
+                | Question (_, _, _, _) -> "Question"
+                | CastE (_, _) -> "CastE"
+                | AddrOf _ -> "AddrOf"
+                | AddrOfLabel _ -> "AddrOfLabel"
+                | StartOf _ -> "StartOf"
+                | FnApp (_, _, _) -> "FnApp"
+                | CnApp (_, _, _) -> "CnApp")
+
 
 class num_exp_translator_t
         (env:c_environment_int)
@@ -536,7 +555,7 @@ object (self)
     | _ -> random_constant_expr             (* TBD, see ref *)
 
   method private translate_rhs_expr (x:exp):xpr_t =
-    let _ = ch_info_log#add "ricardo" (STR ("translate rhs expr for " ^ e2s x)) in
+    let _ = ch_info_log#add "ricardo" (STR ("translate rhs expr for " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x))) in
     let null_sym = memregmgr#mk_null_sym (-1) in
     let null_constant_expr = XConst (SymSet [null_sym]) in
     let default () =
