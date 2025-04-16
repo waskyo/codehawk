@@ -51,6 +51,7 @@ open CCHLibTypes
 open CCHTypesToPretty
 open CCHTypesUtil
 open CCHUtilities
+open CCHRicardoUtil
 
 (* cchpre *)
 open CCHPreTypes
@@ -64,26 +65,6 @@ module B = Big_int_Z
 let pr2s = CHPrettyUtil.pretty_to_string
 let e2s e = pr2s (exp_to_pretty e)
 let fenv = CCHFileEnvironment.file_environment
-
-let rec exp_to_str_ricardo (x: exp) =
-        (match x with
-                | Const _ -> "Const"
-                | Lval _ -> "Lval"
-                | SizeOf _ -> "SizeOf"
-                | SizeOfE s -> "SizeOfE(" ^ (exp_to_str_ricardo s) ^ ")"
-                | SizeOfStr s -> "SizeofStr(" ^ s ^ ")"
-                | AlignOf _ -> "AlignOf()"
-                | AlignOfE _ -> "AlignOfE()"
-                | UnOp (_, two, _) -> "UnOp(type, " ^ (exp_to_str_ricardo two) ^ ", type)"
-                | BinOp (a, b, c, d) -> "BinOp(" ^ a ^ ", " ^ (exp_to_str_ricardo b) ^ ", " ^ (exp_to_str_ricardo c) ^ ", " ^ (exp_to_str_ricardo d) ^ ")" 
-                | Question (_, _, _, _) -> "Question"
-                | CastE (_, _) -> "CastE"
-                | AddrOf _ -> "AddrOf"
-                | AddrOfLabel _ -> "AddrOfLabel"
-                | StartOf _ -> "StartOf"
-                | FnApp (_, _, _) -> "FnApp"
-                | CnApp (_, _, _) -> "CnApp")
-
 
 class num_exp_translator_t
         (env:c_environment_int)
@@ -121,13 +102,21 @@ object (self)
       XVar lvar
 
   method private translate_expr (x:exp):xpr_t =
+    let msg_str = "Translating expr for " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x) in
+    let bt = Printexc.raw_backtrace_to_string (Printexc.get_callstack 8) in
+    let msg = Printf.sprintf "%s\n%s" msg_str bt in
+    let _ = ch_info_log#add "ricardo" (STR msg) in
     let logmsg () = () in
     try
       let ftype = type_of_exp fdecls x in
       match x with
       | Const c -> self#translate_const_expr c ftype
-      | CastE (TPtr _, e) when exp_is_zero e -> zero_constant_expr
-      | CastE (TInt _, CastE (TPtr _,e)) when exp_is_zero e -> zero_constant_expr
+      | CastE (TPtr _, e) when exp_is_zero e ->
+          let _ = ch_info_log#add "ricardo" (STR "->> translated to zero constant expr (tptr case)") in
+          zero_constant_expr
+      | CastE (TInt _, CastE (TPtr _,e)) when exp_is_zero e ->
+          let _ = ch_info_log#add "ricardo" (STR "->> translated to zero constant expr (tint case)") in
+          zero_constant_expr
       | Lval lval -> self#translate_variable_expr lval ftype
       | SizeOf t -> size_of_type fdecls t
       | SizeOfE e -> size_of_exp_type fdecls e
@@ -137,9 +126,9 @@ object (self)
       | UnOp (op, x1, _) -> self#translate_unop_expr op x1
       | CastE (_, e) -> self#translate_expr e
       | AddrOf lval
-	| StartOf lval -> self#translate_address lval ftype
+      | StartOf lval -> self#translate_address lval ftype
       | CnApp ("ntp", [Some (Const (CStr s))],_)
-        | CnApp ("ntp", [Some (CastE (_, Const (CStr s)))], _) ->
+      | CnApp ("ntp", [Some (CastE (_, Const (CStr s)))], _) ->
          XConst (IntConst (mkNumerical (String.length s)))
       | _ ->
          begin
@@ -555,7 +544,7 @@ object (self)
     | _ -> random_constant_expr             (* TBD, see ref *)
 
   method private translate_rhs_expr (x:exp):xpr_t =
-    let _ = ch_info_log#add "ricardo" (STR ("translate rhs expr for " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x))) in
+    let _ = ch_info_log#add "ricardo" (STR ("> doing rhs expr for " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x))) in
     let null_sym = memregmgr#mk_null_sym (-1) in
     let null_constant_expr = XConst (SymSet [null_sym]) in
     let default () =
@@ -569,6 +558,7 @@ object (self)
           | Const c -> self#translate_rhs_const_expr c
           | CastE (TPtr _, e) when exp_is_zero e -> null_constant_expr
           | CastE (TInt _, CastE (TPtr _, e)) when exp_is_zero e ->
+             let _ = ch_info_log#add "ricardo" (STR "> rhs is zero, doing null const expr") in
              null_constant_expr
           | Lval lval -> self#translate_rhs_variable_expr lval
           | AddrOf (Var (vname, vid), _)

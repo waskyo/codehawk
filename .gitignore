@@ -107,3 +107,6 @@ CodeHawk/CHB/bchsummaries/bchsummaries.jar
 # CodeHawk logging
 *.chlog
 *.ch_error_log
+
+# Vim
+*.sw*

@@ -36,6 +36,7 @@ open CHLogger
 open CCHBasicTypes
 open CCHUtilities
 open CCHTypesToPretty
+open CCHRicardoUtil
 
 let pr2s = CHPrettyUtil.pretty_to_string
 let e2s e = pr2s (exp_to_pretty e)
@@ -57,31 +58,13 @@ let mk_equality e1 e2 = BinOp (Eq, e1, e2, TInt (IChar, []))
 
 let mk_logical_and e1 e2 = BinOp (LAnd, e1, e2, TInt (IChar, []))
 
-let exp_to_str_ricardo (x: exp) =
-        (match x with
-                | Const _ -> "Const"
-                | Lval _ -> "Lval"
-                | SizeOf _ -> "SizeOf"
-                | SizeOfE _ -> "SizeOfE"
-                | SizeOfStr _ -> "SizeofStr"
-                | AlignOf _ -> "AlignOf"
-                | AlignOfE _ -> "AlignOfE"
-                | UnOp (_, _, _) -> "UnOp"
-                | BinOp (_, _, _, _) -> "BinOp"
-                | Question (_, _, _, _) -> "Question"
-                | CastE (_, _) -> "CastE"
-                | AddrOf _ -> "AddrOf"
-                | AddrOfLabel _ -> "AddrOfLabel"
-                | StartOf _ -> "StartOf"
-                | FnApp (_, _, _) -> "FnApp"
-                | CnApp (_, _, _) -> "CnApp")
-
 let exp_is_zero (x:exp) =
-        let _ = ch_info_log#add "ricardo" (STR ("checking if it's zero " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x))) in
-  match x with
-  | Const (CInt (i64, _, _)) ->
-     B.eq_big_int (B.big_int_of_int64 i64) B.zero_big_int
-  | _ -> false
+        let ret = match x with
+          | Const (CInt (i64, _, _)) ->
+              B.eq_big_int (B.big_int_of_int64 i64) B.zero_big_int
+          | _ -> false in
+        let _ = ch_info_log#add "ricardo" (STR ("==>> is " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x) ^ " zero? " ^ (Bool.to_string ret))) in
+        ret
 
 
 let char_const_to_int (c: char) : constant =

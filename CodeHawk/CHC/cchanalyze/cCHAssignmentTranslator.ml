@@ -51,11 +51,17 @@ open CCHLibTypes
 open CCHTypesToPretty
 open CCHTypesUtil
 open CCHUtilities
+open CCHRicardoUtil
 
 (* cchanalyze *)
 open CCHAnalysisTypes
 open CCHCommand
 
+let c_cmd_t_to_str_ricardo (c: c_cmd_t) =
+  match c with
+  | CBLOCK _ -> "c_cmd: CBLOCK"
+  | CCMD _ -> "c_cmd: CCMD"
+  | CNOP -> "c_cmd: CNOP"
 
 class num_assignment_translator_t
   (env:c_environment_int)
@@ -67,6 +73,7 @@ object (self)
   val mutable location = unknown_location
 
   method translate (ctxt:program_context_int) (loc:location) (lhs:lval) (rhs:exp) =
+    let _ = ch_info_log#add "ricardo" (STR ("num assignment translate: CTX=" ^ ctxt#to_string ^ ", Lval=" ^ (lval_to_str_ricardo lhs) ^ ", RHS=" ^ (exp_to_str_ricardo rhs))) in
     let _ = context <- ctxt in
     let _ = location <- loc in
     if self#has_contract_instr loc.line lhs then
@@ -78,6 +85,7 @@ object (self)
         let cstProvider = fun (n:numerical_t) -> env#mk_num_constant n in
         let rhsExpr = exp_translator#translate_exp context rhs in
         let (rhsCode,numExp) = xpr2numexpr tmpProvider cstProvider rhsExpr in
+        let _ = ch_info_log#add "ricardo" (STR ("> rhsCode: " ^ (c_cmd_t_to_str_ricardo rhsCode))) in
         let assign =
 	  if chifVar#isTmp then
             let memoryvars = env#get_memory_variables in
@@ -196,14 +204,15 @@ object (self)
     match type_of_exp fdecls rhs with
     | TPtr (TFun _, []) ->
       begin
-	match rhs with
-	| AddrOf (Var (fname, fvid), NoOffset) -> Some (fname, fvid)
-	| _ -> None
-      end
+    match rhs with
+    | AddrOf (Var (fname, fvid), NoOffset) -> Some (fname, fvid)
     | _ -> None
+        end
+      | _ -> None
 
   method translate
            (context:program_context_int) (loc:location) (lhs:lval) (rhs:exp) =
+    let _ = ch_info_log#add "ricardo" (STR ("sym assignment translate: CTX=" ^ context#to_string ^ ", Lval=" ^ (lval_to_str_ricardo lhs) ^ ", RHS=" ^ (exp_to_str_ricardo rhs))) in
     let chifVar = exp_translator#translate_lhs context lhs in
     let atts = match type_of_lval fdecls lhs with
       | TPtr _ ->
