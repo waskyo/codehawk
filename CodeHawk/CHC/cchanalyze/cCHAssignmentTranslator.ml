@@ -73,7 +73,10 @@ object (self)
   val mutable location = unknown_location
 
   method translate (ctxt:program_context_int) (loc:location) (lhs:lval) (rhs:exp) =
-    let _ = ch_info_log#add "ricardo" (STR ("num assignment translate: CTX=" ^ ctxt#to_string ^ ", Lval=" ^ (lval_to_str_ricardo lhs) ^ ", RHS=" ^ (exp_to_str_ricardo rhs))) in
+    let _ = ch_info_log#add "ricardo" (STR ("++ num assignment translate: CTX=" ^ ctxt#to_string  ^
+                                            ", Line=" ^ (Int.to_string loc.line) ^
+                                            ", Lval=" ^ (lval_to_str_ricardo lhs) ^
+                                            ", RHS=" ^ (exp_to_str_ricardo rhs))) in
     let _ = context <- ctxt in
     let _ = location <- loc in
     if self#has_contract_instr loc.line lhs then
@@ -212,7 +215,10 @@ object (self)
 
   method translate
            (context:program_context_int) (loc:location) (lhs:lval) (rhs:exp) =
-    let _ = ch_info_log#add "ricardo" (STR ("sym assignment translate: CTX=" ^ context#to_string ^ ", Lval=" ^ (lval_to_str_ricardo lhs) ^ ", RHS=" ^ (exp_to_str_ricardo rhs))) in
+    let _ = ch_info_log#add "ricardo" (STR ("++ sym assignment translate: CTX=" ^ context#to_string ^
+                                            ", Line=" ^ (Int.to_string loc.line) ^
+                                            ", Lval=" ^ (lval_to_str_ricardo lhs) ^
+                                            ", RHS=" ^ (exp_to_str_ricardo rhs))) in
     let chifVar = exp_translator#translate_lhs context lhs in
     let atts = match type_of_lval fdecls lhs with
       | TPtr _ ->
@@ -250,6 +256,10 @@ object
 
   method translate
            (context:program_context_int) (_loc:location) (lhs:lval) (rhs:exp) =
+    let _ = ch_info_log#add "ricardo" (STR ("++ sym pointersets assignment translate: CTX=" ^ context#to_string  ^
+                                            ", Line=" ^ (Int.to_string _loc.line) ^
+                                            ", Lval=" ^ (lval_to_str_ricardo lhs) ^
+                                            ", RHS=" ^ (exp_to_str_ricardo rhs))) in
     try
       let chifVar = exp_translator#translate_lhs context lhs in
       let rhsExpr = exp_translator#translate_exp context rhs in
@@ -298,6 +308,10 @@ object
 
   method translate
            (context:program_context_int) (_loc:location) (lhs:lval) (rhs:exp) =
+    let _ = ch_info_log#add "ricardo" (STR ("++ sym statesets assignment translate: CTX=" ^ context#to_string  ^
+                                            ", Line=" ^ (Int.to_string _loc.line) ^
+                                            ", Lval=" ^ (lval_to_str_ricardo lhs) ^
+                                            ", RHS=" ^ (exp_to_str_ricardo rhs))) in
     let chifVar = exp_translator#translate_lhs context lhs in
     let rhsExpr = exp_translator#translate_exp context rhs in
     let assign =

@@ -229,6 +229,8 @@ let check_proof_obligations
         (* check for statement validity *)
         try
           begin
+            let line = p#get_location.line in
+            let _ = ch_info_log#add "ricardo" (STR ("Line: " ^ Int.to_string line ^ " Checking PO" ^ p2s p#toPretty)) in
             check_ppo_validity env#get_functionname env#get_fdecls p;
             if p#is_closed then
               let _ = ch_info_log#add "ricardo" (STR "is closed") in

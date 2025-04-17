@@ -53,6 +53,7 @@ open CCHLibTypes
 open CCHTypesToPretty
 open CCHTypesUtil
 open CCHUtilities
+open CCHRicardoUtil
 
 (* cchpre *)
 open CCHInvariantFact
@@ -209,6 +210,11 @@ object (self)
            (lhs:lval option)
            (f:exp)
            (args:exp list) =
+    let _ = ch_info_log#add "ricardo" (STR ("++ num call translate: CTX=" ^ ctxt#to_string ^
+                                       ", Line=" ^ (Int.to_string loc.line) ^
+                                       ", Lval=" ^ ((match lhs with | None -> "None" | Some l -> lval_to_str_ricardo l))
+                                       ^ ", F=" ^ (exp_to_str_ricardo f)
+                                       ^ ", Args=" ^ (exp_list_to_str_ricardo args))) in
     let _ = context <- ctxt in
     let _ = location <- loc in
     try
@@ -741,6 +747,11 @@ object (self)
            (lhs:lval option)
            (f:exp)
            (args:exp list) =
+    let _ = ch_info_log#add "ricardo" (STR ("++ valueset call translate: CTX=" ^ ctxt#to_string ^
+                                       ", Line=" ^ (Int.to_string loc.line) ^
+                                       ", Lval=" ^ ((match lhs with | None -> "None" | Some l -> lval_to_str_ricardo l))
+                                       ^ ", F=" ^ (exp_to_str_ricardo f)
+                                       ^ ", Args=" ^ (exp_list_to_str_ricardo args))) in
     let _ = context <- ctxt in
     let _ = location <- loc in
     try
@@ -1140,6 +1151,11 @@ object (self)
            (lhs:lval option)
            (f:exp)
            (args:exp list) =
+    let _ = ch_info_log#add "ricardo" (STR ("++ sym call translate: CTX=" ^ ctxt#to_string ^
+                                       ", Line=" ^ (Int.to_string loc.line) ^
+                                       ", Lval=" ^ ((match lhs with | None -> "None" | Some l -> lval_to_str_ricardo l))
+                                       ^ ", F=" ^ (exp_to_str_ricardo f)
+                                       ^ ", Args=" ^ (exp_list_to_str_ricardo args))) in
     let _ = context <- ctxt in
     let _ = location <- loc in
     match f with
@@ -1466,6 +1482,11 @@ object (self)
            (lhs:lval option)
            (f:exp)
            (args:exp list) =
+    let _ = ch_info_log#add "ricardo" (STR ("++ sym pointersets call translate: CTX=" ^ ctxt#to_string ^
+                                       ", Line=" ^ (Int.to_string loc.line) ^
+                                       ", Lval=" ^ ((match lhs with | None -> "None" | Some l -> lval_to_str_ricardo l))
+                                       ^ ", F=" ^ (exp_to_str_ricardo f)
+                                       ^ ", Args=" ^ (exp_list_to_str_ricardo args))) in
     let _ = context <- ctxt in
     let _ = location <- loc in
     try
@@ -1749,6 +1770,11 @@ object (self)
            (lhs:lval option)
            (f:exp)
            (args:exp list) =
+    let _ = ch_info_log#add "ricardo" (STR ("++ stateset call translate: CTX=" ^ ctxt#to_string ^
+                                       ", Line=" ^ (Int.to_string loc.line) ^
+                                       ", Lval=" ^ ((match lhs with | None -> "None" | Some l -> lval_to_str_ricardo l))
+                                       ^ ", F=" ^ (exp_to_str_ricardo f)
+                                       ^ ", Args=" ^ (exp_list_to_str_ricardo args))) in
     let _ = context <- ctxt in
     let _ = location <- loc in
     let tmpProvider = fun () -> env#mk_sym_temp in

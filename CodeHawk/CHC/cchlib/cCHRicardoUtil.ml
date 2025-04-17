@@ -31,15 +31,15 @@ let unop_to_str_ricardo (u: unop) =
   | BNot -> "bnot"
   | LNot -> "lnot"
 
-let type_to_str_ricardo (t: typ) =
+let rec type_to_str_ricardo (t: typ) =
   match t with
   | TVoid _ -> "(void)"
   | TInt (_, _) -> "(int)"
   | TFloat (_, _) -> "(float)"
-  | TPtr (_, _) -> "(ptr)"
+  | TPtr (tp, _) -> "(Ptr to " ^ (type_to_str_ricardo tp) ^ ")"
   | TArray (_, _, _) -> "(array)"
   | TFun (_, _, _, _) -> "(func)"
-  | TNamed (_, _) -> "(named)"
+  | TNamed (name, attrs) -> "(typedef: " ^ name ^ ", Attrs=" ^ Int.to_string (List.length attrs) ^ ")"
   | TComp (_, _) -> "(comp)"
   | TEnum (_, _) -> "(enum)"
   | TBuiltin_va_list _ -> "(va_list)"
@@ -72,7 +72,7 @@ let rec exp_to_str_ricardo (x: exp) =
   | FnApp (_, _, _) -> "FnApp"
   | CnApp (_, _, _) -> "CnApp")
 
-and varuse_to_str_ricardo (v: varuse) = match v with | (vname, vid) -> vname ^ ", " ^ (Int.to_string vid)
+and varuse_to_str_ricardo (v: varuse) = match v with | (vname, vid) -> vname ^ "( vid=" ^ (Int.to_string vid) ^ ")"
 
 and lhost_to_str_ricardo (host: lhost) =
   match host with
@@ -88,3 +88,4 @@ and offset_to_str_ricardo (off: offset) =
 and lval_to_str_ricardo (l: lval) =
   match l with | (host, offset) -> (lhost_to_str_ricardo host) ^ ", " ^ (offset_to_str_ricardo offset)
 
+let exp_list_to_str_ricardo (l: exp list) = String.concat ", " (List.map exp_to_str_ricardo l)

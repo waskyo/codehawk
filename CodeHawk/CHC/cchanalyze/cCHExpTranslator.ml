@@ -102,10 +102,10 @@ object (self)
       XVar lvar
 
   method private translate_expr (x:exp):xpr_t =
-    let msg_str = "Translating expr for " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x) in
-    let bt = Printexc.raw_backtrace_to_string (Printexc.get_callstack 8) in
-    let msg = Printf.sprintf "%s\n%s" msg_str bt in
-    let _ = ch_info_log#add "ricardo" (STR msg) in
+    let msg_str = "Translating expr: " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x) in
+    (* let bt = Printexc.raw_backtrace_to_string (Printexc.get_callstack 8) in
+    let msg = Printf.sprintf "%s\n%s" msg_str bt in *)
+    let _ = ch_info_log#add "ricardo" (STR msg_str) in
     let logmsg () = () in
     try
       let ftype = type_of_exp fdecls x in
@@ -277,6 +277,8 @@ object (self)
     simplify_xpr result
 
   method translate_condition context c =
+    let _ = ch_info_log#add "ricardo" (STR ("[num exp] Translating condition: " ^
+                                            (e2s c) ^ " -> " ^ (exp_to_str_ricardo c))) in
     let tmpProvider = (fun () -> env#mk_num_temp) in
     let cstProvider = (fun (n:numerical_t) -> env#mk_num_constant n) in
     let make_assume (x:xpr_t) =
@@ -301,6 +303,7 @@ object (self)
       | UnOp (LNot, e,_) -> e
       | _ -> UnOp (LNot, c, type_of_exp fdecls c) in
     let _ = env#start_transaction in
+    (* here *)
     let then_expr = self#translate_exp context c in
     let then_assert = [make_assume then_expr] in
     let (tmps, constantAssigns) = env#end_transaction in
@@ -544,7 +547,10 @@ object (self)
     | _ -> random_constant_expr             (* TBD, see ref *)
 
   method private translate_rhs_expr (x:exp):xpr_t =
-    let _ = ch_info_log#add "ricardo" (STR ("> doing rhs expr for " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x))) in
+    let msg_str = "[sym_pointersets_exp]> doing rhs expr for " ^ (e2s x) ^ " -> " ^ (exp_to_str_ricardo x) in
+    (* let bt = Printexc.raw_backtrace_to_string (Printexc.get_callstack 8) in
+    let msg = Printf.sprintf "%s\n%s" msg_str bt in *)
+    let _ = ch_info_log#add "ricardo" (STR msg_str) in
     let null_sym = memregmgr#mk_null_sym (-1) in
     let null_constant_expr = XConst (SymSet [null_sym]) in
     let default () =
@@ -556,9 +562,11 @@ object (self)
         if is_pointer_type typ then
           match x with
           | Const c -> self#translate_rhs_const_expr c
-          | CastE (TPtr _, e) when exp_is_zero e -> null_constant_expr
+          | CastE (TPtr _, e) when exp_is_zero e ->
+             let _ = ch_info_log#add "ricardo" (STR "> rhs is zero, doing null const expr (tptr case)") in
+             null_constant_expr
           | CastE (TInt _, CastE (TPtr _, e)) when exp_is_zero e ->
-             let _ = ch_info_log#add "ricardo" (STR "> rhs is zero, doing null const expr") in
+             let _ = ch_info_log#add "ricardo" (STR "> rhs is zero, doing null const expr (tint case)") in
              null_constant_expr
           | Lval lval -> self#translate_rhs_variable_expr lval
           | AddrOf (Var (vname, vid), _)
@@ -630,6 +638,8 @@ object (self)
     None       (* TBD, see ref *)
 
   method translate_condition (_cfgcontext: program_context_int) (cond: exp) =
+    let _ = ch_info_log#add "ricardo" (STR ("[sym pointersets exp] Translating condition: " ^
+                                            (e2s cond) ^ " -> " ^ (exp_to_str_ricardo cond))) in
     let nullsyms = memregmgr#get_null_syms in
     let rec is_zero e = match e with
       | Const (CInt (i64, _, _)) -> (Int64.compare i64 Int64.zero) = 0
@@ -788,6 +798,8 @@ object (self)
           env#mk_temp SYM_VAR_TYPE
 
   method translate_condition (context: program_context_int) (c: exp) =
+    let _ = ch_info_log#add "ricardo" (STR ("[sym exp] Translating condition: " ^
+                                            (e2s c) ^ " -> " ^ (exp_to_str_ricardo c))) in
     let make_assume (x:xpr_t) =
       if is_zero x || is_false x then
         (ASSERT FALSE,ASSERT TRUE)

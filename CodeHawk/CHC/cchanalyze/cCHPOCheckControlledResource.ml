@@ -28,8 +28,13 @@
    ============================================================================= *)
 
 
+(* chutil *)
+open CHLogger
+open CHPrettyUtil
+
 (* cchlib *)
 open CCHBasicTypes
+open CCHTypesToPretty
 
 (* cchpre *)
 open CCHPreTypes
@@ -37,6 +42,7 @@ open CCHPreTypes
 (* cchanalyze *)
 open CCHAnalysisTypes
 
+let p2s = pretty_to_string
 
 class controlled_resource_checker_t
         (_poq: po_query_int)
@@ -54,7 +60,16 @@ end
 
 
 let check_controlled_resource (poq:po_query_int) (resource:string) (e:exp)  =
+  let msg = "> controlled resource: " ^ resource ^ p2s (exp_to_pretty e) in
+  let bt = Printexc.raw_backtrace_to_string (Printexc.get_callstack 8) in
+  let _ = ch_info_log#add "ricardo" (STR (msg ^ "\n" ^ bt)) in
   let invs = poq#get_invariants 3 in
   let _ = poq#set_diagnostic_invariants 3 in
   let checker = new controlled_resource_checker_t poq resource e invs in
-  checker#check_safe || checker#check_violation || checker#check_delegation
+  let safe = checker#check_safe in
+  let violation = checker#check_violation in
+  let deleg = checker#check_delegation in
+  let msg = Printf.sprintf "> resoure constrained: safe=%B violation=%B deleg=%B " safe violation deleg in
+  let _ = ch_info_log#add "ricardo" (STR msg) in
+  safe || violation || deleg
+  (* checker#check_safe || checker#check_violation || checker#check_delegation *)
