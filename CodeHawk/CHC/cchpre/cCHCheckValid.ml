@@ -576,12 +576,19 @@ let check_ppo_validity
   let set_diagnostic =  ppo#add_diagnostic_msg in
 
   let is_argv (vid:int) =
-    vid > 0
+    begin
+    let ret = vid > 0
     && fname = "main"
     && env#is_formal vid
     && (get_varinfo vid).vparam = 2 in
+    let _ = ch_info_log#add "ricardo" (STR ("is argv? " ^ (Bool.to_string ret))) in
+    ret
+    end in
 
   let rec is_program_name (e:exp) =
+    begin
+    let _ = ch_info_log#add "ricardo" (STR ("is_program_name: " ^ p2s (exp_to_pretty e))) in
+    let ret =
     fname = "main" &&
       (match e with
        | CastE (_, ee) -> is_program_name ee
@@ -592,6 +599,9 @@ let check_ppo_validity
                NoOffset) ->
           is_argv vid && (get_varinfo vid).vparam = 2 && (Int64.to_int i64) = 0
        | _ -> false) in
+    let _ = ch_info_log#add "ricardo" (STR (">> is_program_name: " ^ (Bool.to_string ret))) in
+    ret
+    end in
 
   let make_record status mth explanation =
     begin
@@ -604,7 +614,6 @@ let check_ppo_validity
   let make = make_record Green DStmt in
   let make_violation = make_record Red DStmt in
   let make_warning _s = make_record Green DStmt in   (* TBD *)
-  let _ = ch_info_log#add "ricardo" (STR "over here") in
   let _ = pd#index_po_predicate ppo#get_predicate in
   try
     match ppo#get_predicate with
@@ -2061,6 +2070,16 @@ let check_ppo_validity
   | PInitialized (Var (vname, vid),_) when env#is_formal vid ->
      make (vname ^ " is a function parameter")
 
+  (* XXX: This matches the case where we're getting a precondition on initialized(*argv)
+     which is generated from this PPO:"initialized((*(argv + 0):((char *) *)))"
+     But passing e to is_program_name here results in false. Looking at the output
+     of my debug message the difference is that in this case 'e' is not an
+     lval. Not sure what to do next...
+  | PInitialized (Mem e, _) when is_program_name e ->
+     make
+       ("pointer to program name is guaranteed initialized by operating system")
+  *)
+
   | PInitialized (Mem e, _)
        when is_null_pointer e || has_embedded_null_dereference e ->
      make
@@ -2300,7 +2319,7 @@ let check_ppo_validity
        | _ -> ()
      end
 
-  | _ -> 
+  | _ ->
     let _ = ch_info_log#add "ricardo" (STR "default case") in
     ()
   with CCHFailure pp ->
