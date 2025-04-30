@@ -409,10 +409,10 @@ object (self)
 
   method private xpr1_implies_pluspi_safe (invindex: int) (x: xpr_t) =
     match x with
-    | XVar v -> 
+    | XVar v ->
         let _ = ch_info_log#add "ricardo" (STR ">>>> xpr1 implies pluspi safe for xvar") in
         self#var1_implies_pluspi_safe invindex v
-    | _ -> 
+    | _ ->
         let _ = ch_info_log#add "ricardo" (STR ">>>> xpr1 implies pluspi safe not an xvar, returning None") in
         None
 
@@ -431,7 +431,7 @@ object (self)
                   end
                | _ -> false
              end
-          | _ -> 
+          | _ ->
              let _ = ch_info_log#add "ricardo" (STR ">>> no upper bound expression") in
              false) false invs1
 

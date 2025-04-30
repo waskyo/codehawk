@@ -569,7 +569,7 @@ let rec is_global_address (e:exp) =
 
 let check_ppo_validity
       (fname:string) (env:cfundeclarations_int) (ppo:proof_obligation_int) =
-  let _ = ch_info_log#add "ricardo" (STR ("-- checking ppo validity for " ^ p2s (po_predicate_to_pretty ppo#get_predicate))) in
+  let _ = ch_info_log#add "ricardo" (STR ("check_ppo_validity> for " ^ p2s (po_predicate_to_pretty ppo#get_predicate))) in
 
   let get_varinfo = env#get_varinfo_by_vid in
 
@@ -581,13 +581,13 @@ let check_ppo_validity
     && fname = "main"
     && env#is_formal vid
     && (get_varinfo vid).vparam = 2 in
-    let _ = ch_info_log#add "ricardo" (STR ("is argv? " ^ (Bool.to_string ret))) in
+    let _ = ch_info_log#add "ricardo" (STR ("check_ppo_validity> is argv? " ^ (Bool.to_string ret))) in
     ret
     end in
 
   let rec is_program_name (e:exp) =
     begin
-    let _ = ch_info_log#add "ricardo" (STR ("is_program_name: " ^ p2s (exp_to_pretty e))) in
+    let _ = ch_info_log#add "ricardo" (STR ("check_ppo_validity> is_program_name: " ^ p2s (exp_to_pretty e))) in
     let ret =
     fname = "main" &&
       (match e with
@@ -599,7 +599,7 @@ let check_ppo_validity
                NoOffset) ->
           is_argv vid && (get_varinfo vid).vparam = 2 && (Int64.to_int i64) = 0
        | _ -> false) in
-    let _ = ch_info_log#add "ricardo" (STR (">> is_program_name: " ^ (Bool.to_string ret))) in
+    let _ = ch_info_log#add "ricardo" (STR ("check_ppo_validity> is_program_name: " ^ (Bool.to_string ret))) in
     ret
     end in
 
@@ -608,7 +608,7 @@ let check_ppo_validity
       ppo#set_status status;
       ppo#set_dependencies mth;
       ppo#set_explanation explanation;
-      ch_info_log#add "ricardo" (STR ("== making record: " ^ explanation))
+      ch_info_log#add "ricardo" (STR ("check_ppo_validity> making record: " ^ explanation))
     end in
 
   let make = make_record Green DStmt in
@@ -2070,8 +2070,8 @@ let check_ppo_validity
   | PInitialized (Var (vname, vid),_) when env#is_formal vid ->
      make (vname ^ " is a function parameter")
 
-  (* XXX: This matches the case where we're getting a precondition on initialized(*argv)
-     which is generated from this PPO:"initialized((*(argv + 0):((char *) *)))"
+  (* XXX: This matches the case where we're getting a precondition on initialized( *argv)
+     which is generated from this PPO:"initialized(( *(argv + 0):((char * ) * )))"
      But passing e to is_program_name here results in false. Looking at the output
      of my debug message the difference is that in this case 'e' is not an
      lval. Not sure what to do next...
@@ -2320,7 +2320,7 @@ let check_ppo_validity
      end
 
   | _ ->
-    let _ = ch_info_log#add "ricardo" (STR "default case") in
+    let _ = ch_info_log#add "ricardo" (STR "check_ppo_validity> default case") in
     ()
   with CCHFailure pp ->
     begin

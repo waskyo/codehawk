@@ -74,6 +74,23 @@ let p2s = pretty_to_string
 let x2s x = p2s (x2p x)
 let e2s e = p2s (exp_to_pretty e)
 
+let non_relational_value_to_str_ricardo (f: non_relational_value_t) =
+  match f with
+        | FSymbolicExpr f ->
+          (match f with
+                | XVar var -> "FSymbolicExpr:XVar:" ^ var#getName#getBaseName
+                | XConst _ -> "FSymbolicExpr:XConst"
+                | XOp (_, _) -> "FSymbolicExpr:XOp"
+                | XAttr (_, _) -> "FSymbolicExpr:XAttr")
+        | FSymbolicBound (_, _) -> "FSymbolicBound"
+        | FIntervalValue (low, high) -> "FIntervalValue:" ^
+         (match low with | None -> "No-Low" | Some v -> "Low: " ^ v#toString) ^
+         " - " ^
+         (match high with | None -> "No-High" | Some v -> "High: " ^ v#toString)
+        | FBaseOffsetValue (_, _, _, _, _) -> "FBaseOffsetValue"
+        | FRegionSet _ -> "FRegionSet"
+        | FInitializedSet _ -> "FInitializedSet"
+        | FPolicyStateSet _ -> "FPolicyStateSet"
 
 class po_query_t
         (env:c_environment_int)
@@ -1400,24 +1417,30 @@ object (self)
 
   method get_command_line_argument_count: (int * int) option =
     if fname = "main" then
+      let _ = ch_info_log#add "ricardo" (STR ("POQ> getting command line argument count for main")) in
       let locinvio = invio#get_location_invariant cfgcontext in
       let argc = fenv#get_formal 1 in
       let argcvar = self#env#mk_program_var argc NoOffset NUM_VAR_TYPE in
       let facts = List.concat (List.map locinvio#get_var_invariants [argcvar]) in
+      let _ = ch_info_log#add "ricardo" (STR ("POQ> Got facts with length: " ^ string_of_int (List.length facts))) in
       let facts =
         List.fold_left (fun acc f ->
             match f#get_fact with
             | NonRelationalFact (_v, i) -> (f#index, i) :: acc
             | _ -> acc) [] facts in
+      let _ = ch_info_log#add "ricardo" (STR ("POQ> NonRelational facts with length: " ^ string_of_int (List.length facts))) in
       List.fold_left (fun acc (inv, i) ->
           match acc with
-          | Some _ -> acc
+          | Some _ ->
+             let _ = ch_info_log#add "ricardo" (STR ("POQ> acc is some")) in
+             acc
           | _ ->
+             let _ = ch_info_log#add "ricardo" (STR ("POQ> Looking at invariant: " ^ (non_relational_value_to_str_ricardo i))) in
              match i with
              | FIntervalValue (Some lb, Some ub) when lb#equal ub ->
                 begin
                   try
-                    Some (inv,lb#toInt)
+                    Some (inv, lb#toInt)
                   with
                     _ ->
                     begin
@@ -1429,6 +1452,7 @@ object (self)
                 end
              | _ -> acc) None facts
     else
+      let _ = ch_info_log#add "ricardo" (STR ("POQ> don't know how to get command line argument count for function " ^ fname)) in
       None
 
   method check_command_line_argument

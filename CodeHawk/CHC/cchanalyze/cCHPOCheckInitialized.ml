@@ -49,6 +49,7 @@ open CCHTypesCompare
 open CCHTypesToPretty
 open CCHTypesUtil
 open CCHUtilities
+open CCHRicardoUtil
 
 (* cchpre *)
 open CCHMemoryBase
@@ -92,10 +93,12 @@ object (self)
   method private check_command_line_argument =
     if poq#is_command_line_argument (Lval lval) then
       let index = poq#get_command_line_argument_index (Lval lval) in
+      let _ = ch_info_log#add "ricardo" (STR (">> is a command line argument, index " ^ (Int.to_string index))) in
       match poq#get_command_line_argument_count with
       | Some (inv, arg_count) ->
          if index < arg_count then
            begin
+             ch_info_log#add "ricardo" (STR (">> index is less than arg count " ^ (string_of_int arg_count)));
              poq#record_safe_result
                (DLocal [inv])
                ("command-line argument "
@@ -106,6 +109,7 @@ object (self)
            end
          else
            begin
+             ch_info_log#add "ricardo" (STR (">> index is more than arg count " ^ (string_of_int arg_count)));
              poq#record_violation_result
                (DLocal [inv])
                ("command-line argument "
@@ -116,6 +120,7 @@ object (self)
            end
       | _ ->
          begin
+           ch_info_log#add "ricardo" (STR (">> no argument count invariant, waah"));
            poq#set_diagnostic
              ("no invariant found for argument count; unable to validate access of "
               ^ "command-line argument "
@@ -123,6 +128,7 @@ object (self)
            false
          end
     else
+      let _ = ch_info_log#add "ricardo" (STR (">> is not a command line argument")) in
       false
 
   method private get_symbol_name (s: symbol_t) =
@@ -681,7 +687,14 @@ end
 
 
 let check_initialized (poq:po_query_int) (lval:lval) =
+  let _ = ch_info_log#add "ricardo" (STR ("> check-initialized lval: " ^ lval_to_str_ricardo lval)) in
   let invs = poq#get_invariants 1 in
   let _ = poq#set_diagnostic_invariants 1 in
   let checker = new initialized_checker_t poq lval invs in
-  checker#check_safe || checker#check_violation || checker#check_delegation
+  let safe = checker#check_safe in
+  let violation = checker#check_violation in
+  let deleg = checker#check_delegation in
+  let msg = Printf.sprintf "> check-initialized: safe %B violation %B deleg %B " safe violation deleg in
+  let _ = ch_info_log#add "ricardo" (STR msg) in
+  safe || violation || deleg
+  (* checker#check_safe || checker#check_violation || checker#check_delegation *)
